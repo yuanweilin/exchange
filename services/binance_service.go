@@ -1,26 +1,52 @@
 package services
 
 import (
-	"context"
+	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/adshao/go-binance/v2"
 )
 
-func GetLatestOrderBook(symbol string) (bestBid, bestAsk string, err error) {
-	client := binance.NewClient("", "")
+func handleDepthEvent(event *binance.WsDepthEvent) {
+	if len(event.Bids) > 0 && len(event.Asks) > 0 {
+		bestBid := event.Bids[0].Price
+		bestAsk := event.Asks[0].Price
+		log.Printf("Real-time Best Bid: %s, Best Ask: %s", bestBid, bestAsk)
 
-	depth, err := client.NewDepthService().Symbol(symbol).Limit(5).Do(context.Background())
+		fmt.Println("---------------")
+		fmt.Println("Best bid:", bestBid)
+		fmt.Println("Best ask:", bestAsk)
+		fmt.Println("---------------")
+	} else {
+		log.Println("Bids or Asks are empty, skipping event.")
+	}
+}
+
+func GetLatestOrderPrices() {
+	wsDepthHandler := func(event *binance.WsDepthEvent) {
+		handleDepthEvent(event)
+	}
+
+	errHandler := func(err error) {
+		log.Printf("Error: %v", err)
+	}
+
+	doneC, stopC, err := binance.WsDepthServe("ETHBTC", wsDepthHandler, errHandler)
 	if err != nil {
-		log.Println("Error fetching order book:", err)
-		return "", "", err
+		log.Fatal(err)
 	}
 
-	if len(depth.Bids) > 0 && len(depth.Asks) > 0 {
-		bestBid = depth.Bids[0].Price
-		bestAsk = depth.Asks[0].Price
-		return bestBid, bestAsk, nil
-	}
+	signalC := make(chan os.Signal, 1)
+	signal.Notify(signalC, syscall.SIGINT, syscall.SIGTERM)
 
-	return "", "", nil
+	select {
+	case <-signalC:
+		log.Println("Received interrupt signal, shutting down gracefully...")
+		close(stopC)
+	case <-doneC:
+		log.Println("WebSocket connection closed.")
+	}
 }
