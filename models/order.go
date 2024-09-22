@@ -9,8 +9,10 @@ import (
 type OrderType string
 
 type OrderBook struct {
-	Buy  []Order `json:"buy"`
-	Sell []Order `json:"sell"`
+	Buy       []Order `json:"buy"`
+	Sell      []Order `json:"sell"`
+	TotalBuy  []Order `json:"total_buy"`
+	TotalSell []Order `json:"total_sell"`
 }
 
 const (

@@ -29,12 +29,14 @@ func FetchOrderBookFromDatabase() models.OrderBook {
 		return sellOrders[i].Price.Cmp(sellOrders[j].Price) < 0
 	})
 
-	buyOrders = mergeOrdersWithSamePrice(buyOrders)
-	sellOrders = mergeOrdersWithSamePrice(sellOrders)
+	mergedBuyOrders := mergeOrdersWithSamePrice(buyOrders)
+	mergedSellOrders := mergeOrdersWithSamePrice(sellOrders)
 
 	return models.OrderBook{
-		Buy:  buyOrders,
-		Sell: sellOrders,
+		Buy:       mergedBuyOrders,
+		Sell:      mergedSellOrders,
+		TotalBuy:  buyOrders,
+		TotalSell: sellOrders,
 	}
 }
 

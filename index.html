@@ -7,15 +7,29 @@
   <title>Order Book</title>
   <style>
     .order-book {
+      width: 80%;
+      margin: 0 auto;
+    }
+    .market-orders,
+    .user-orders {
       display: flex;
       justify-content: space-around;
       margin: 20px;
+      flex-wrap: wrap;
+      height: 500px;
+      overflow-y: auto;
+
+      >h2 {
+        width: 100%;
+        text-align: center;
+      }
     }
 
     .orders {
       border: 1px solid #ccc;
       padding: 10px;
       width: 45%;
+      margin-bottom: 20px;
     }
 
     table {
@@ -38,29 +52,62 @@
 
 <body>
   <div class="order-book">
-    <div class="orders">
-      <h2>Buy Orders</h2>
-      <table id="buyOrdersTable">
-        <thead>
-          <tr>
-            <th>Price</th>
-            <th>Amount</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+    <div class="market-orders">
+      <h2>Market Orders</h2>
+      <div class="orders">
+        <h2>Buy Orders(Merged)</h2>
+        <table id="buyOrdersTable">
+          <thead>
+            <tr>
+              <th>Price</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="orders">
+        <h2>Sell Orders(Merged)</h2>
+        <table id="sellOrdersTable">
+          <thead>
+            <tr>
+              <th>Price</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
-    <div class="orders">
-      <h2>Sell Orders</h2>
-      <table id="sellOrdersTable">
-        <thead>
-          <tr>
-            <th>Price</th>
-            <th>Amount</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+
+    <div class="user-orders">
+      <h2>User Orders</h2>
+      <div class="orders">
+        <h2>Buy Orders (Unmerged)</h2>
+        <table id="buyOrdersUnmergedTable">
+          <thead>
+            <tr>
+              <th>Price</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="orders">
+        <h2>Sell Orders (Unmerged)</h2>
+        <table id="sellOrdersUnmergedTable">
+          <thead>
+            <tr>
+              <th>Price</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -74,12 +121,15 @@
     };
 
     socket.onmessage = function (event) {
-      console.log("Received data: ", event.data);
-      const orderBook = JSON.parse(event.data);
+      const data = JSON.parse(event.data);
 
       const buyOrdersTable = document.getElementById('buyOrdersTable').querySelector('tbody');
+      const sellOrdersTable = document.getElementById('sellOrdersTable').querySelector('tbody');
+
       buyOrdersTable.innerHTML = '';
-      orderBook.buy.forEach(order => {
+      sellOrdersTable.innerHTML = '';
+
+      data.buy.forEach(order => {
         const row = document.createElement('tr');
         const formattedPrice = parseFloat(order.price).toFixed(8);
         const formattedAmount = parseFloat(order.amount).toFixed(8);
@@ -87,14 +137,32 @@
         buyOrdersTable.appendChild(row);
       });
 
-      const sellOrdersTable = document.getElementById('sellOrdersTable').querySelector('tbody');
-      sellOrdersTable.innerHTML = '';
-      orderBook.sell.forEach(order => {
+      data.sell.forEach(order => {
         const row = document.createElement('tr');
         const formattedPrice = parseFloat(order.price).toFixed(8);
         const formattedAmount = parseFloat(order.amount).toFixed(8);
         row.innerHTML = `<td>${formattedPrice}</td><td>${formattedAmount}</td>`;
         sellOrdersTable.appendChild(row);
+      });
+
+      const buyOrdersUnmergedTable = document.getElementById('buyOrdersUnmergedTable').querySelector('tbody');
+      buyOrdersUnmergedTable.innerHTML = '';
+      data.total_buy.forEach(order => {
+        const row = document.createElement('tr');
+        const formattedPrice = parseFloat(order.price).toFixed(8);
+        const formattedAmount = parseFloat(order.amount).toFixed(8);
+        row.innerHTML = `<td>${formattedPrice}</td><td>${formattedAmount}</td>`;
+        buyOrdersUnmergedTable.appendChild(row);
+      });
+
+      const sellOrdersUnmergedTable = document.getElementById('sellOrdersUnmergedTable').querySelector('tbody');
+      sellOrdersUnmergedTable.innerHTML = '';
+      data.total_sell.forEach(order => {
+        const row = document.createElement('tr');
+        const formattedPrice = parseFloat(order.price).toFixed(8);
+        const formattedAmount = parseFloat(order.amount).toFixed(8);
+        row.innerHTML = `<td>${formattedPrice}</td><td>${formattedAmount}</td>`;
+        sellOrdersUnmergedTable.appendChild(row);
       });
     };
 
