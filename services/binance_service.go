@@ -14,7 +14,7 @@ func handleDepthEvent(event *binance.WsDepthEvent) {
 		bestBid := event.Bids[0].Price
 		bestAsk := event.Asks[0].Price
 		log.Printf("Real-time Best Bid: %s, Best Ask: %s", bestBid, bestAsk)
-		UpdateBestOrders(bestBid, bestAsk)
+		replaceOldOrdersWithNew(bestBid, bestAsk)
 	} else {
 		log.Println("Bids or Asks are empty, skipping event.")
 	}

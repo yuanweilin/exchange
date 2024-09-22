@@ -1,9 +1,12 @@
 package controllers
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"sync"
+
+	"exchange/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -49,6 +52,16 @@ func BroadcastMessage(messageType int, message []byte) {
 			log.Println("Error sending message:", err)
 		}
 	}
+}
+
+func UpdateOrderBook(newOrderBook models.OrderBook) {
+	message, err := json.Marshal(newOrderBook)
+	if err != nil {
+		log.Println("Error marshaling order book:", err)
+		return
+	}
+
+	BroadcastMessage(websocket.TextMessage, message)
 }
 
 func OrderSyncWebSocketHandler(c *gin.Context) {
