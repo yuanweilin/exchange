@@ -4,7 +4,7 @@ services:
   web:
     build: .
     ports:
-      - "8081:8081"
+      - "8082:8082"
     volumes:
       - .:/app
     depends_on:
@@ -24,8 +24,12 @@ services:
       POSTGRES_USER:  ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
+    deploy:
+      resources:
+        limits:
+          memory: 2g
     ports:
-      - "5433:5432"
+      - "5434:5434"
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
 volumes:

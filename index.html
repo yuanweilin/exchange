@@ -64,8 +64,10 @@
     </div>
   </div>
 
+  <script src="config.js"></script>
+
   <script>
-    const socket = new WebSocket('ws://localhost:8081/ws/ordersync');
+    const socket = new WebSocket(WEBSOCKET_URL);
 
     socket.onopen = function (event) {
       console.log("WebSocket is open now.");

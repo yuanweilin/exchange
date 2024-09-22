@@ -21,5 +21,5 @@ func main() {
 	apiRoutes.RegisterAPIRoutes(r)
 	websocketRoutes.RegisterWebSocketRoutes(r)
 
-	r.Run("0.0.0.0:8081")
+	r.Run("0.0.0.0:8082")
 }
