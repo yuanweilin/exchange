@@ -1,3 +1,5 @@
 package models
 
-var AllModels = []interface{}{}
+var AllModels = []interface{}{
+	&Order{},
+}
