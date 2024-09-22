@@ -1,6 +1,7 @@
 package services
 
 import (
+	"log"
 	"math/rand"
 
 	"exchange/models"
@@ -13,7 +14,7 @@ func generatePriceNormalDistribution(mean, stdDev float64) float64 {
 	return mean + r*stdDev
 }
 
-func generateTraderOrders(bestAsk decimal.Decimal, traderType string, orderType models.OrderType) models.Order {
+func generateTraderOrders(bestAsk decimal.Decimal, traderType string) models.Order {
 	amount := decimal.NewFromFloat(0)
 	price := bestAsk
 
@@ -28,15 +29,22 @@ func generateTraderOrders(bestAsk decimal.Decimal, traderType string, orderType 
 	return models.Order{
 		Price:  price,
 		Amount: amount,
-		Type:   orderType,
+		Type:   "sell",
 	}
 }
 
-// 模擬不同類型的交易者行為產生orders
-func GenerateSellOrdersByTraderType(bestAsk string, orderType models.OrderType) []models.Order {
+// 模擬不同類型的交易者行為產生賣單，保留傳入的最佳賣單價格
+func GenerateSellOrdersByTraderType(bestAsk string) []models.Order {
 	bestAskDecimal, _ := decimal.NewFromString(bestAsk)
 	totalAmount := decimal.Zero
 	var orders []models.Order
+
+	orders = append(orders, models.Order{
+		Price:  bestAskDecimal,
+		Amount: decimal.NewFromFloat(rand.Float64() * 10).Round(2),
+		Type:   "sell",
+	})
+	totalAmount = totalAmount.Add(orders[0].Amount)
 
 	for totalAmount.LessThan(decimal.NewFromFloat(150.0)) {
 		traderType := "institution"
@@ -44,46 +52,81 @@ func GenerateSellOrdersByTraderType(bestAsk string, orderType models.OrderType) 
 			traderType = "retail"
 		}
 
-		order := generateTraderOrders(bestAskDecimal, traderType, orderType)
-		orders = append(orders, order)
-
-		totalAmount = totalAmount.Add(order.Amount)
-
-		if totalAmount.GreaterThanOrEqual(decimal.NewFromFloat(150.0)) {
+		order := generateTraderOrders(bestAskDecimal, traderType)
+		if totalAmount.Add(order.Amount).GreaterThan(decimal.NewFromFloat(150.0)) {
+			remainingAmount := decimal.NewFromFloat(150.0).Sub(totalAmount)
+			order.Amount = remainingAmount.Round(2)
+			orders = append(orders, order)
+			totalAmount = totalAmount.Add(order.Amount)
 			break
+		} else {
+			orders = append(orders, order)
+			totalAmount = totalAmount.Add(order.Amount)
 		}
 	}
 
 	return orders
 }
 
-// 基於市場深度的分佈產生orders
-func GenerateBidOrdersByMarketDepth(bestBid string, orderType models.OrderType) []models.Order {
+// 基於市場深度的分佈產生買單，保留傳入的最佳買單價格
+func GenerateBidOrdersByMarketDepth(bestBid string) []models.Order {
 	bestBidDecimal, _ := decimal.NewFromString(bestBid)
 	totalValue := decimal.Zero
 	var orders []models.Order
+
+	currentPrice := bestBidDecimal
+
+	amount := decimal.NewFromFloat(rand.Float64()*0.5 + 0.1).Round(2)
+	orders = append(orders, models.Order{
+		Price:  currentPrice,
+		Amount: amount,
+		Type:   "buy",
+	})
+	totalValue = totalValue.Add(amount.Mul(currentPrice))
 
 	meanPrice, _ := bestBidDecimal.Float64()
 	stdDev := meanPrice * 0.005
 
 	for totalValue.LessThan(decimal.NewFromFloat(5.0)) {
 		price := decimal.NewFromFloat(generatePriceNormalDistribution(meanPrice, stdDev)).Round(4)
-		amount := decimal.NewFromFloat(rand.Float64() * 0.5).Round(2)
 
-		if len(orders) == 0 {
-			price = bestBidDecimal
+		if price.GreaterThanOrEqual(currentPrice) {
+			price = currentPrice.Sub(decimal.NewFromFloat(0.0001))
+		}
+		if price.LessThanOrEqual(decimal.NewFromFloat(0)) {
+			log.Println("Price is too low or negative, stopping order generation.")
+			break
+		}
+
+		amount := decimal.NewFromFloat(rand.Float64()*1 + 0.2).Round(2)
+		if amount.LessThanOrEqual(decimal.NewFromFloat(0)) {
+			amount = decimal.NewFromFloat(0.1)
+		}
+
+		orderValue := amount.Mul(price)
+		if totalValue.Add(orderValue).GreaterThan(decimal.NewFromFloat(5.0)) {
+			remainingValue := decimal.NewFromFloat(5.0).Sub(totalValue)
+			adjustedAmount := remainingValue.Div(price).Round(2)
+			if adjustedAmount.GreaterThan(decimal.NewFromFloat(0)) {
+				orders = append(orders, models.Order{
+					Price:  price,
+					Amount: adjustedAmount,
+					Type:   "buy",
+				})
+				totalValue = totalValue.Add(adjustedAmount.Mul(price))
+			}
+			break
 		}
 
 		orders = append(orders, models.Order{
 			Price:  price,
 			Amount: amount,
-			Type:   orderType,
+			Type:   "buy",
 		})
 
-		orderValue := amount.Mul(price)
 		totalValue = totalValue.Add(orderValue)
-
-		if totalValue.GreaterThanOrEqual(decimal.NewFromFloat(5.0)) {
+		currentPrice = price
+		if totalValue.GreaterThanOrEqual(decimal.NewFromFloat(4.5)) {
 			break
 		}
 	}

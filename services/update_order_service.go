@@ -3,14 +3,13 @@ package services
 import (
 	"exchange/database"
 	"exchange/models"
-	"exchange/websocket/controllers"
+	"exchange/websocket"
 	"log"
 	"sort"
-
-	"gorm.io/gorm"
 )
 
-func fetchOrderBookFromDatabase(db *gorm.DB) models.OrderBook {
+func FetchOrderBookFromDatabase() models.OrderBook {
+	db := database.DB
 	var buyOrders []models.Order
 	var sellOrders []models.Order
 
@@ -30,16 +29,43 @@ func fetchOrderBookFromDatabase(db *gorm.DB) models.OrderBook {
 		return sellOrders[i].Price.Cmp(sellOrders[j].Price) < 0
 	})
 
+	buyOrders = mergeOrdersWithSamePrice(buyOrders)
+	sellOrders = mergeOrdersWithSamePrice(sellOrders)
+
 	return models.OrderBook{
 		Buy:  buyOrders,
 		Sell: sellOrders,
 	}
 }
 
+func mergeOrdersWithSamePrice(orders []models.Order) []models.Order {
+	if len(orders) == 0 {
+		return orders
+	}
+
+	mergedOrders := []models.Order{}
+	currentOrder := orders[0]
+
+	for i := 1; i < len(orders); i++ {
+		if orders[i].Price.Equal(currentOrder.Price) {
+			currentOrder.Amount = currentOrder.Amount.Add(orders[i].Amount)
+		} else {
+			mergedOrders = append(mergedOrders, currentOrder)
+			currentOrder = orders[i]
+		}
+	}
+	mergedOrders = append(mergedOrders, currentOrder)
+
+	return mergedOrders
+}
+
 // 批次插入新訂單並刪除舊訂單
 func replaceOldOrdersWithNew(bestBid string, bestAsk string) {
 	db := database.DB
 	tx := db.Begin()
+
+	newBidOrders := GenerateBidOrdersByMarketDepth(bestBid)
+	newAskOrders := GenerateSellOrdersByTraderType(bestAsk)
 
 	if err := tx.Where("type = ?", "buy").Delete(&models.Order{}).Error; err != nil {
 		tx.Rollback()
@@ -50,9 +76,6 @@ func replaceOldOrdersWithNew(bestBid string, bestAsk string) {
 		tx.Rollback()
 		return
 	}
-
-	newBidOrders := GenerateSellOrdersByTraderType(bestBid, models.OrderTypeBuy)
-	newAskOrders := GenerateBidOrdersByMarketDepth(bestAsk, models.OrderTypeSell)
 
 	for _, order := range newBidOrders {
 		if err := tx.Create(&order).Error; err != nil {
@@ -72,6 +95,6 @@ func replaceOldOrdersWithNew(bestBid string, bestAsk string) {
 		return
 	}
 
-	orderBook := fetchOrderBookFromDatabase(db)
-	controllers.UpdateOrderBook(orderBook)
+	orderBook := FetchOrderBookFromDatabase()
+	websocket.UpdateOrderBook(orderBook)
 }
