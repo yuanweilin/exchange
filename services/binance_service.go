@@ -1,7 +1,6 @@
 package services
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -15,11 +14,7 @@ func handleDepthEvent(event *binance.WsDepthEvent) {
 		bestBid := event.Bids[0].Price
 		bestAsk := event.Asks[0].Price
 		log.Printf("Real-time Best Bid: %s, Best Ask: %s", bestBid, bestAsk)
-
-		fmt.Println("---------------")
-		fmt.Println("Best bid:", bestBid)
-		fmt.Println("Best ask:", bestAsk)
-		fmt.Println("---------------")
+		UpdateBestOrders(bestBid, bestAsk)
 	} else {
 		log.Println("Bids or Asks are empty, skipping event.")
 	}
